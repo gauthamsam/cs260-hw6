@@ -2,7 +2,7 @@ package pllab.lwnn.abstract_domains
 
 import pllab.lwnn.syntax._
 import Pretty.{ stmt2str ⇒ pretty }
-import scala.collection.SortedSet
+import scala.collection.mutable.LinkedHashSet
 
 // DEFINES THE FOLLOWING SEMANTIC DOMAINS
 //
@@ -79,6 +79,11 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
 }
 
+
+// abstract addresses (Label, which is an integer)
+case class Address(lbl: Int)
+
+
 sealed abstract class AbstractValue {
   // lattice join
   def ⊔(v: AbstractValue): AbstractValue
@@ -109,50 +114,6 @@ sealed abstract class AbstractValue {
   def notEmpty: Boolean
 }
 
-
-
-// abstract addresses (Label, which is an integer)
-case class Address(lbl: Int)
-
-// values: ℤ#
-class Value(integer: Z, closureSet: SortedSet[Closure]) extends AbstractValue{
-  
-  // lattice join
-  def ⊔(v: AbstractValue): AbstractValue
-
-  // widening operator
-  def ▽(v: AbstractValue): AbstractValue
-
-  // binary ops
-  def +(v: AbstractValue): AbstractValue
-  def −(v: AbstractValue): AbstractValue
-  def ×(v: AbstractValue): AbstractValue
-  def ÷(v: AbstractValue): AbstractValue
-  def ≈(v: AbstractValue): AbstractValue
-  def ≠(v: AbstractValue): AbstractValue
-  def <(v: AbstractValue): AbstractValue
-  def ≤(v: AbstractValue): AbstractValue
-  def ∧(v: AbstractValue): AbstractValue
-  def ∨(v: AbstractValue): AbstractValue
-
-  // for evaluating conditional guards: definitelyTrue returns true
-  // iff this value represents at least one integer and definitely
-  // could not be 0; definitelyFalse returns true iff this value
-  // definitely represents 0 and nothing else; notEmpty returns true
-  // iff this value represents at least one integer.
-  //
-  def definitelyTrue: Boolean
-  def definitelyFalse: Boolean
-  def notEmpty: Boolean
-}
-
-// Companion object for Value
-object Value{
-  def apply(integer: Z, closureSet: Set[Closure]): Value = {
-    Value(integer, closureSet)
-  }
-}
-
 case class KontSet(set: Set[Kont] = Set()) extends AbstractValue{  
   def ⊔(v: AbstractValue) = sys.error("undefined")
 
@@ -180,6 +141,142 @@ case class KontSet(set: Set[Kont] = Set()) extends AbstractValue{
   def definitelyTrue = sys.error("undefined")
   def definitelyFalse = sys.error("undefined")
   def notEmpty = sys.error("undefined")
+}
+
+
+// values: ℤ#
+case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure]) extends AbstractValue{
+  
+  // lattice join
+  def ⊔(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {
+        Value(Z(intAbs ⊔ intAbs1), closureSet ++ closureSet1)
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+
+  // widening operator
+  def ▽(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(Z(intAbs ▽ intAbs1), closureSet ++ closureSet1)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+
+  // binary ops
+  def +(v: AbstractValue): AbstractValue = {
+    v match { 
+      case Value(intAbs1, closureSet1) => {        
+        Value(Z(intAbs + intAbs1), null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def −(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(Z(intAbs − intAbs1), null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def ×(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(Z(intAbs × intAbs1), null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def ÷(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(intAbs ÷ intAbs1, null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def ≈(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(Z(intAbs ≈ intAbs1), null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def ≠(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(Z(intAbs ≠ intAbs1), null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def <(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(intAbs < intAbs1, null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def ≤(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(Z(intAbs ≤ intAbs1), null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def ∧(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(intAbs ∧ intAbs1, null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+  
+  def ∨(v: AbstractValue): AbstractValue = {
+    v match {
+      case Value(intAbs1, closureSet1) => {        
+        Value(intAbs ∨ intAbs1, null)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
+
+  // for evaluating conditional guards: definitelyTrue returns true
+  // iff this value represents at least one integer and definitely
+  // could not be 0; definitelyFalse returns true iff this value
+  // definitely represents 0 and nothing else; notEmpty returns true
+  // iff this value represents at least one integer.
+  //
+  def definitelyTrue: Boolean = {
+    intAbs.definitelyTrue
+  }
+  
+  def definitelyFalse: Boolean = {
+    intAbs.definitelyFalse
+  }
+  
+  def notEmpty: Boolean = {
+    intAbs.notEmpty
+  }
+  
+  
 }
 
 // integer abstraction: the constants lattice
@@ -312,7 +409,6 @@ object Z {
 }
 // closure
 case class Closure(ρ: Env, f: Fun){
-  
 
 }
 

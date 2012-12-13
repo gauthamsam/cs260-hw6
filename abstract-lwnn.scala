@@ -5,6 +5,8 @@ import scala.collection.mutable.{ HashMap ⇒ HMap }
 import pllab.lwnn.syntax._
 import Pretty.{ stmt2str ⇒ pretty }
 import pllab.lwnn.abstract_domains._
+import scala.collection.SortedSet
+import scala.collection.mutable.LinkedHashSet
 
 // main interpreter entry point
 object ALwnn {
@@ -101,8 +103,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
         case _ => sys.error("Inconceivable")
       }
     }
-    
-    // To do - Change this to use projection instead.
+
     case Binop(op, e1, e2) ⇒
       op match {
         case ⌜+⌝ ⇒ {
@@ -112,7 +113,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜−⌝ ⇒ {
           var value = eval(e1) − eval(e2)
           value match {
@@ -120,6 +121,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
+        
         case ⌜×⌝ ⇒ {
           var value = eval(e1) × eval(e2)
           value match {
@@ -127,7 +129,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜÷⌝ ⇒ {
           var value = eval(e1) ÷ eval(e2)
           value match {
@@ -135,7 +137,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜=⌝ ⇒ {
           var value = eval(e1) ≈ eval(e2)
           value match {
@@ -143,6 +145,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
+        
         case ⌜≠⌝ ⇒ {
           var value = eval(e1) ≠ eval(e2)
           value match {
@@ -150,6 +153,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
+        
         case ⌜<⌝ ⇒ {
           var value = eval(e1) < eval(e2)
           value match {
@@ -157,6 +161,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
+        
         case ⌜≤⌝ ⇒ {
           var value = eval(e1) ≤ eval(e2)
           value match {
@@ -164,6 +169,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
+        
         case ⌜∧⌝ ⇒ {
           var value = eval(e1) ∧ eval(e2)
           value match {
@@ -171,6 +177,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
+        
         case ⌜∨⌝ ⇒ {
           var value = eval(e1) ∨ eval(e2)
           value match {
@@ -182,7 +189,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
 
     case f: Fun ⇒
       val ρc = ρ filter (f.free contains _)
-      Value(Z.⊥, Set(Closure(ρc, f)))
+      Value(Z.⊥, LinkedHashSet(Closure(ρc, f)))
   }
 
   // state transition function.
