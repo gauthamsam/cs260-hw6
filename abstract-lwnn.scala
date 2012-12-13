@@ -5,7 +5,6 @@ import scala.collection.mutable.{ HashMap ⇒ HMap }
 import pllab.lwnn.syntax._
 import Pretty.{ stmt2str ⇒ pretty }
 import pllab.lwnn.abstract_domains._
-import scala.collection.SortedSet
 import scala.collection.mutable.LinkedHashSet
 
 // main interpreter entry point
@@ -41,6 +40,8 @@ object ALwnn {
         } else if (memo(ς.lbl) == memo(ς.lbl) ▽ ς) // nothing new
           None
         else { // new information
+          println("old state " + memo(ς.lbl))
+          println("new state " + ς)
           memo(ς.lbl) = memo(ς.lbl) ▽ ς
           Some(memo(ς.lbl))
         })
@@ -93,7 +94,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
     case Range(n1, n2) ⇒ {
       // the join of all abstracted integers in the given range
       var abs = (n1 to n2).foldLeft(α(n1))((acc, n) ⇒ Z(acc ⊔ α(n)))
-      Value(abs, null)
+      Value(abs)
     }
 
     case x: Var ⇒ {
@@ -121,7 +122,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜×⌝ ⇒ {
           var value = eval(e1) × eval(e2)
           value match {
@@ -145,7 +146,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜≠⌝ ⇒ {
           var value = eval(e1) ≠ eval(e2)
           value match {
@@ -153,7 +154,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜<⌝ ⇒ {
           var value = eval(e1) < eval(e2)
           value match {
@@ -161,7 +162,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜≤⌝ ⇒ {
           var value = eval(e1) ≤ eval(e2)
           value match {
@@ -169,7 +170,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜∧⌝ ⇒ {
           var value = eval(e1) ∧ eval(e2)
           value match {
@@ -177,7 +178,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => sys.error("Inconceivable")
           }
         }
-        
+
         case ⌜∨⌝ ⇒ {
           var value = eval(e1) ∨ eval(e2)
           value match {
@@ -188,6 +189,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
       }
 
     case f: Fun ⇒
+      println("### Case Fn ###")
       val ρc = ρ filter (f.free contains _)
       Value(Z.⊥, LinkedHashSet(Closure(ρc, f)))
   }
@@ -237,9 +239,19 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
         if (v.notEmpty) State(v, ρ, σ + (ρ(x) → v), κ)
         else Set()
 
+      case Call(x, ef, es) ⇒
+        
+      	val Closure(ρc, Fun(xs, s)) = eval(ef).closureSet.last
+      	println("Closure " + Closure)
+      	val as = xs map ((x: Var) ⇒ Address(x.lbl))
+        val vs = es map eval
+        val l = Address(s.lbl)
+        val retMap = (l -> KontSet(LinkedHashSet(retK(ρ, x, κ))))
+        State(s, ρc ++ (xs zip as), σ ++ (as zip vs) + retMap, addrK(l))
+
       case Decl(xs, s) ⇒
         val as = xs map ((x: Var) ⇒ Address(x.lbl))
-        val σ1 = σ ++ (as map (_ → Value(α(0), null)))
+        val σ1 = σ ++ (as map (_ → Value(α(0))))
         State(s, ρ ++ (xs zip as), σ1, κ)
 
       case _ ⇒ // only reached if empty Seq (should be impossible)
@@ -263,7 +275,18 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
           Set(State(s, ρ, σ, whileK(e, s, κc)), State(guard, ρ, σ, κc))
         else
           Set()
+          
+      case retK(ρc, x, κc) ⇒
+        State(v, ρc, σ + (ρc(x) → v), κc)
 
+      case addrK(as) ⇒
+      	val kontSet = σ(as) match {
+          case set: KontSet => set
+          case _ => sys.error("undefined")
+        }
+      	val κc = kontSet.set.last
+        State(v, ρ, σ, κc)
+  
       case haltK ⇒
         Set()
     }

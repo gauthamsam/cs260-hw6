@@ -1,0 +1,7 @@
+# Hidden files/folders #
+######################
+.*
+!/.gitignore
+
+# Class files #
+*.class

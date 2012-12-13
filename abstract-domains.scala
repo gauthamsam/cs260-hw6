@@ -69,8 +69,9 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
   // add a value to the store at the given address
   def +(av: (Address, AbstractValue)): Store = {
     // Doing a weak update.
-    var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
-    Store(sto + tuple)
+    // var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
+    println("AbstractValue " + av._2)
+    Store(sto + av)
   }
 
   // ditto for sequences of (address,value)
@@ -79,10 +80,8 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
 }
 
-
 // abstract addresses (Label, which is an integer)
 case class Address(lbl: Int)
-
 
 sealed abstract class AbstractValue {
   // lattice join
@@ -114,7 +113,7 @@ sealed abstract class AbstractValue {
   def notEmpty: Boolean
 }
 
-case class KontSet(set: Set[Kont] = Set()) extends AbstractValue{  
+case class KontSet(set: LinkedHashSet[Kont] = LinkedHashSet()) extends AbstractValue {
   def ⊔(v: AbstractValue) = sys.error("undefined")
 
   // widening operator
@@ -143,10 +142,9 @@ case class KontSet(set: Set[Kont] = Set()) extends AbstractValue{
   def notEmpty = sys.error("undefined")
 }
 
-
 // values: ℤ#
-case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure]) extends AbstractValue{
-  
+case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure] = LinkedHashSet()) extends AbstractValue {
+
   // lattice join
   def ⊔(v: AbstractValue): AbstractValue = {
     v match {
@@ -160,8 +158,10 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure]) extends Abstract
   // widening operator
   def ▽(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(Z(intAbs ▽ intAbs1), closureSet ++ closureSet1)        
+      case Value(intAbs1, closureSet1) => {
+        println("intAbs, intAbs1: " + intAbs + ", " + intAbs1)
+        println("closureSet, closureSet1 " + closureSet + ", " + closureSet)
+        Value(Z(intAbs ▽ intAbs1), closureSet ++ closureSet1)
       }
       case _ => sys.error("undefined")
     }
@@ -169,90 +169,90 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure]) extends Abstract
 
   // binary ops
   def +(v: AbstractValue): AbstractValue = {
-    v match { 
-      case Value(intAbs1, closureSet1) => {        
-        Value(Z(intAbs + intAbs1), null)        
+    v match {
+      case Value(intAbs1, closureSet1) => {
+        Value(Z(intAbs + intAbs1))
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def −(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(Z(intAbs − intAbs1), null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(Z(intAbs − intAbs1))
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def ×(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(Z(intAbs × intAbs1), null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(Z(intAbs × intAbs1))
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def ÷(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(intAbs ÷ intAbs1, null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(intAbs ÷ intAbs1)
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def ≈(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(Z(intAbs ≈ intAbs1), null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(Z(intAbs ≈ intAbs1))
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def ≠(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(Z(intAbs ≠ intAbs1), null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(Z(intAbs ≠ intAbs1))
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def <(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(intAbs < intAbs1, null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(intAbs < intAbs1)
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def ≤(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(Z(intAbs ≤ intAbs1), null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(Z(intAbs ≤ intAbs1))
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def ∧(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(intAbs ∧ intAbs1, null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(intAbs ∧ intAbs1)
       }
       case _ => sys.error("undefined")
     }
   }
-  
+
   def ∨(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
-        Value(intAbs ∨ intAbs1, null)        
+      case Value(intAbs1, closureSet1) => {
+        Value(intAbs ∨ intAbs1)
       }
       case _ => sys.error("undefined")
     }
@@ -264,19 +264,22 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure]) extends Abstract
   // definitely represents 0 and nothing else; notEmpty returns true
   // iff this value represents at least one integer.
   //
-  def definitelyTrue: Boolean = {
-    intAbs.definitelyTrue
+  def definitelyTrue: Boolean = {    
+    intAbs.definitelyTrue    
   }
-  
+
   def definitelyFalse: Boolean = {
     intAbs.definitelyFalse
   }
-  
+
   def notEmpty: Boolean = {
     intAbs.notEmpty
   }
   
-  
+  override def toString = {
+      "{" + intAbs + ", "  + closureSet + "}"
+  }
+
 }
 
 // integer abstraction: the constants lattice
@@ -408,7 +411,7 @@ object Z {
   val False = Z(Set(0))
 }
 // closure
-case class Closure(ρ: Env, f: Fun){
+case class Closure(ρ: Env, f: Fun) {
 
 }
 
@@ -419,7 +422,7 @@ case object haltK extends Kont {
   override def toString = "— haltK"
 }
 
-case class addrK(a: Address, roots: Set[Int]) extends Kont {
+case class addrK(a: Address) extends Kont {
   override def toString = "— addrK " + a
 }
 
