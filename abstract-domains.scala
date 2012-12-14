@@ -118,24 +118,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     var unreachableAddresses: Set[Address] = (sto.keySet -- rootset)
     // Remove the unreachable address from the counter map
     for (address <- unreachableAddresses) {
-      println("here")
-      var canRemove = true
-      sto(address) match {
-        case set: KontSet => set.set.foreach { knt =>
-          knt match {
-            case ad: addrK => {
-              
-              canRemove = false
-              println("can remove false")
-              // println("adding addrK to rootset " + ad.a)
-            }
-            case _ => // do nothin for other Konts.
-          }
-        }
-        case _ => // do nothin for Values.
-      }
-      if (canRemove)
-    	  Counter.ctr -= address
+      Counter.ctr -= address
     }
     // Remove all the elements from the Store that are not in the root set.
     Store(sto -- unreachableAddresses)
