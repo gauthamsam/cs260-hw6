@@ -243,20 +243,20 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
         var result = Set[State]()
         var closureSet: LinkedHashSet[Closure] = eval(ef).closureSet
 
-        // Iterate over the closure set in Value.
+        // Iterate over the closure set in Value and add a State for each closure
         for (Closure(ρc, Fun(xs, s)) <- closureSet) {
           val as = xs map ((x: Var) ⇒ Address(x.lbl))
           val vs = es map eval
           val l = Address(s.lbl)
           var newKontSet = KontSet(LinkedHashSet(retK(ρ, x, κ)))
           // If there is already a KontSet for address 'l', append the new set to the existing set.
-          //          val oldKontSet = σ(l)
-          //          if (oldKontSet != null){
-          //            oldKontSet match {
-          //              case KontSet(set) => newKontSet.set ++= set
-          //              case _ => sys.error("inconceivable")
-          //            }
-          //          }
+          val oldKontSet = σ(l)
+          if (oldKontSet != null) {
+            oldKontSet match {
+              case KontSet(set) => newKontSet.set ++= set
+              case _ => sys.error("inconceivable")
+            }
+          }
           val retMap = (l -> newKontSet)
           result += State(s, ρc ++ (xs zip as), σ ++ (as zip vs) + retMap, addrK(l))
           result
@@ -306,9 +306,9 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             case _ => // do nothin for Values.
           }
         }
-      
-      	State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
-        //State(v, ρc, σ + (ρc(x) → v), κc)
+
+        State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
+      //State(v, ρc, σ + (ρc(x) → v), κc)
 
       case addrK(as) ⇒
         var result = Set[State]()
@@ -317,7 +317,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
           case set: KontSet => set
           case _ => sys.error("undefined")
         }
-
+        // Iterate over the kontSet and add a State for each value
         for (κc <- kontSet.set) {
           result += State(v, ρ, σ, κc)
         }
