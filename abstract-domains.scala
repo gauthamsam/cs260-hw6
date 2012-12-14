@@ -63,14 +63,14 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
   def apply(a: Address): AbstractValue =
     sto get a match {
       case Some(v) ⇒ v
-      case None ⇒ sys.error("inconceivable")
+      case None ⇒ null
     }
 
   // add a value to the store at the given address
   def +(av: (Address, AbstractValue)): Store = {
     // Doing a weak update.
     // var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
-    println("AbstractValue " + av._2)
+    //println("AbstractValue " + av._2)
     Store(sto + av)
   }
 
@@ -114,10 +114,17 @@ sealed abstract class AbstractValue {
 }
 
 case class KontSet(set: LinkedHashSet[Kont] = LinkedHashSet()) extends AbstractValue {
-  def ⊔(v: AbstractValue) = sys.error("undefined")
+  def ⊔(v: AbstractValue) = {
+    v match {
+      case KontSet(set1) => {
+        KontSet(set ++ set1)        
+      }
+      case _ => sys.error("undefined")
+    }
+  }
 
   // widening operator
-  def ▽(v: AbstractValue) = sys.error("undefined")
+  def ▽(v: AbstractValue) = this ⊔ v 
 
   // binary ops
   def +(v: AbstractValue) = sys.error("undefined")
@@ -158,9 +165,7 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure] = LinkedHashSet()
   // widening operator
   def ▽(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {
-        println("intAbs, intAbs1: " + intAbs + ", " + intAbs1)
-        println("closureSet, closureSet1 " + closureSet + ", " + closureSet)
+      case Value(intAbs1, closureSet1) => {        
         Value(Z(intAbs ▽ intAbs1), closureSet ++ closureSet1)
       }
       case _ => sys.error("undefined")
@@ -412,7 +417,7 @@ object Z {
 }
 // closure
 case class Closure(ρ: Env, f: Fun) {
-
+	override def toString = "— Closure " + ρ + ", " + f  
 }
 
 // semantic continuations
