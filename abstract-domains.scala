@@ -88,13 +88,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     if (Counter.ctr.contains(av._1)) {
       if (Counter.ctr(av._1) > 1) {
         // do weak update
-        var combinedValue: AbstractValue = av._2
-        // Sometimes it goes to the if part. Need to check what exactly causes this.
-        if (! sto.contains(av._1)){
-          combinedValue = sto(av._1) ⊔ combinedValue
-        }
-        
-        var tuple: (Address, AbstractValue) = (av._1, combinedValue)
+        var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
         // println("AbstractValue " + av._2)
         Store(sto + tuple)
       } else {
@@ -121,12 +115,27 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
   def gc(rootset: LinkedHashSet[Address]): Store = {
     // decrement the ref count
-    var newStore: Store = this
-    var newCounter = 0
     var unreachableAddresses: Set[Address] = (sto.keySet -- rootset)
     // Remove the unreachable address from the counter map
     for (address <- unreachableAddresses) {
-      Counter.ctr -= address
+      println("here")
+      var canRemove = true
+      sto(address) match {
+        case set: KontSet => set.set.foreach { knt =>
+          knt match {
+            case ad: addrK => {
+              
+              canRemove = false
+              println("can remove false")
+              // println("adding addrK to rootset " + ad.a)
+            }
+            case _ => // do nothin for other Konts.
+          }
+        }
+        case _ => // do nothin for Values.
+      }
+      if (canRemove)
+    	  Counter.ctr -= address
     }
     // Remove all the elements from the Store that are not in the root set.
     Store(sto -- unreachableAddresses)
