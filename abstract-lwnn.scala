@@ -84,6 +84,11 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
   // widening operator
   def ▽(ς: State): State = {
     assert((t == ς.t) && (ρ == ς.ρ) && (κ == ς.κ))
+    println("Widening")
+    println("Environment 1")
+    println(ρ)
+    println("Environment 2")
+    println(ς.ρ)
     State(t, ρ, σ ▽ ς.σ, κ)
   }
 
@@ -188,7 +193,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
 
     case f: Fun ⇒
       val ρc = ρ filter (f.free contains _)
-      Value(Z.⊥, LinkedHashSet(Closure(ρc, f)))      
+      Value(Z.⊥, LinkedHashSet(Closure(ρc, f)))
   }
 
   // state transition function.
@@ -234,30 +239,33 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
         State(v, ρ, σ + (ρ(x) → v), κ)
 
       case Call(x, ef, es) ⇒
-        var closureSet: LinkedHashSet[Closure] = eval(ef).closureSet
+        println("Call")
         var result = Set[State]()
+        var closureSet: LinkedHashSet[Closure] = eval(ef).closureSet
+
+        // Iterate over the closure set in Value.
         for (Closure(ρc, Fun(xs, s)) <- closureSet) {
-          
           val as = xs map ((x: Var) ⇒ Address(x.lbl))
           val vs = es map eval
           val l = Address(s.lbl)
           var newKontSet = KontSet(LinkedHashSet(retK(ρ, x, κ)))
           // If there is already a KontSet for address 'l', append the new set to the existing set.
-          val oldKontSet = σ(l)
-          if (oldKontSet != null){
-            oldKontSet match {
-              case KontSet(set) => newKontSet.set ++= set
-              case _ => sys.error("inconceivable")
-            }
-          }
+          //          val oldKontSet = σ(l)
+          //          if (oldKontSet != null){
+          //            oldKontSet match {
+          //              case KontSet(set) => newKontSet.set ++= set
+          //              case _ => sys.error("inconceivable")
+          //            }
+          //          }
           val retMap = (l -> newKontSet)
           result += State(s, ρc ++ (xs zip as), σ ++ (as zip vs) + retMap, addrK(l))
+          result
         }
         result
-        
+
       case Decl(xs, s) ⇒
         val as = xs map ((x: Var) ⇒ Address(x.lbl))
-        val σ1 = σ ++ (as map (_ → Value(α(0))))
+        val σ1 = σ ++ (as map (_ -> Value(α(0))))
         State(s, ρ ++ (xs zip as), σ1, κ)
 
       case _ ⇒ // only reached if empty Seq (should be impossible)
@@ -283,21 +291,38 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
           Set()
 
       case retK(ρc, x, κc) ⇒
-        State(v, ρc, σ + (ρc(x) → v), κc)
+        // garbage collect on ρ
+        // root set ρc + addrk stored in ρc
+        var rootset: LinkedHashSet[Address] = LinkedHashSet()
+        rootset ++= ρc.ρ.values
+        rootset.foreach { a =>
+          σ(a) match {
+            case set: KontSet => set.set.foreach { knt =>
+              knt match {
+                case ad: addrK => rootset += ad.a
+                case _ => // do nothin for other Konts.
+              }
+            }
+            case _ => // do nothin for Values.
+          }
+        }
+      
+      	State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
+        //State(v, ρc, σ + (ρc(x) → v), κc)
 
       case addrK(as) ⇒
         var result = Set[State]()
-        
+
         val kontSet = σ(as) match {
           case set: KontSet => set
           case _ => sys.error("undefined")
         }
-      
-      	for(κc <- kontSet.set){
-      		result += State(v, ρ, σ, κc)
-      	}
-      	
-      	result
+
+        for (κc <- kontSet.set) {
+          result += State(v, ρ, σ, κc)
+        }
+
+        result
 
       case haltK ⇒
         Set()

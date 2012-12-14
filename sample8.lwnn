@@ -1,6 +1,6 @@
 decl x, y, foo in
   
-foo := () => {decl a, b in 5};
+foo := () => {};
 x := foo();
 y := foo();
 x;

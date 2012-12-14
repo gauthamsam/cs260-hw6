@@ -39,6 +39,10 @@ case class Env(ρ: Map[Var, Address] = Map()) {
 
 }
 
+package object Counter {
+  var ctr: Map[Address, Int] = Map();
+}
+
 // store 
 case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
@@ -53,7 +57,18 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
   // widening operator
   def ▽(σ: Store): Store = {
-    assert(sto.keys == σ.sto.keys)
+    println("sto.keys " + sto.keys)
+    println("σ.sto.keys " + σ.sto.keys)
+    println("Map 1")
+    for (key <- sto.keys) {
+      println(key + " : " + sto.get(key))
+    }
+    println("Map 2")
+    for (key <- σ.sto.keys) {
+      println(key + " : " + σ.sto.get(key))
+    }
+
+    //assert(sto.keys == σ.sto.keys)
     val sto1 = sto.keys.foldLeft(Map[Address, AbstractValue]())(
       (acc, a) ⇒ acc + (a → (sto(a) ▽ σ.sto(a))))
     Store(sto1)
@@ -68,20 +83,57 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
   // add a value to the store at the given address
   def +(av: (Address, AbstractValue)): Store = {
-    // Doing a weak update.
-    // var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
-    //println("AbstractValue " + av._2)
-    Store(sto + av)
+    if (Counter.ctr.contains(av._1)) {
+      if (Counter.ctr(av._1) > 1) {
+        // do weak update
+        var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
+        println("AbstractValue " + av._2)
+        Store(sto + tuple)
+      } else {
+        // do strong update
+        var temp = Counter.ctr(av._1) + 1
+        Counter.ctr += (av._1 -> temp)
+        Store(sto + av)
+      }
+    } else {
+      // do strong update
+      Counter.ctr += (av._1 -> 0)
+      Store(sto + av)
+    }
   }
 
   // ditto for sequences of (address,value)
-  def ++(avs: List[(Address, AbstractValue)]): Store =
-    Store(sto ++ avs)
+  def ++(avs: List[(Address, AbstractValue)]): Store = {
+    var returnstr: Store = this
+    avs.foreach { av =>
+      returnstr = returnstr + av
+    }
+    returnstr
+  }
+  
+  
+  def gc(ads: LinkedHashSet[Address]): Store = {	
+     Store(sto -- (sto.keySet -- ads))
+  }
 
 }
 
 // abstract addresses (Label, which is an integer)
 case class Address(lbl: Int)
+
+// companion object for factory method
+object Address {
+
+  // helpers for generating fresh addresses
+  private var aid = 0
+  private def fresh(): Int =
+    { aid += 1; aid }
+
+  // generate fresh Address
+  def apply(): Address =
+    new Address(fresh())
+
+}
 
 sealed abstract class AbstractValue {
   // lattice join
@@ -117,14 +169,14 @@ case class KontSet(set: LinkedHashSet[Kont] = LinkedHashSet()) extends AbstractV
   def ⊔(v: AbstractValue) = {
     v match {
       case KontSet(set1) => {
-        KontSet(set ++ set1)        
+        KontSet(set ++ set1)
       }
       case _ => sys.error("undefined")
     }
   }
 
   // widening operator
-  def ▽(v: AbstractValue) = this ⊔ v 
+  def ▽(v: AbstractValue) = this ⊔ v
 
   // binary ops
   def +(v: AbstractValue) = sys.error("undefined")
@@ -165,7 +217,7 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure] = LinkedHashSet()
   // widening operator
   def ▽(v: AbstractValue): AbstractValue = {
     v match {
-      case Value(intAbs1, closureSet1) => {        
+      case Value(intAbs1, closureSet1) => {
         Value(Z(intAbs ▽ intAbs1), closureSet ++ closureSet1)
       }
       case _ => sys.error("undefined")
@@ -269,8 +321,8 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure] = LinkedHashSet()
   // definitely represents 0 and nothing else; notEmpty returns true
   // iff this value represents at least one integer.
   //
-  def definitelyTrue: Boolean = {    
-    intAbs.definitelyTrue    
+  def definitelyTrue: Boolean = {
+    intAbs.definitelyTrue
   }
 
   def definitelyFalse: Boolean = {
@@ -280,9 +332,9 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure] = LinkedHashSet()
   def notEmpty: Boolean = {
     intAbs.notEmpty
   }
-  
+
   override def toString = {
-      "{" + intAbs + ", "  + closureSet + "}"
+    "{" + intAbs + ", " + closureSet + "}"
   }
 
 }
@@ -417,7 +469,7 @@ object Z {
 }
 // closure
 case class Closure(ρ: Env, f: Fun) {
-	override def toString = "— Closure " + ρ + ", " + f  
+  override def toString = "— Closure " + ρ + ", " + f
 }
 
 // semantic continuations
