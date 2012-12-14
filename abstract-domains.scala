@@ -88,14 +88,10 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     if (Counter.ctr.contains(av._1)) {
       if (Counter.ctr(av._1) > 1) {
         // do weak update
-        var combinedValue: AbstractValue = null
-        // Sometimes it goes to the else part. Need to check what exactly causes this.
-        if (sto.contains(av._1)){
-          combinedValue = sto(av._1) ⊔ av._2
-        }
-        else{
-          // println("Value in Store " + av._1 + " : " + av._2)
-          combinedValue = av._2        	
+        var combinedValue: AbstractValue = av._2
+        // Sometimes it goes to the if part. Need to check what exactly causes this.
+        if (! sto.contains(av._1)){
+          combinedValue = sto(av._1) ⊔ combinedValue
         }
         
         var tuple: (Address, AbstractValue) = (av._1, combinedValue)
@@ -128,7 +124,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     var newStore: Store = this
     var newCounter = 0
     var addressesToRemove: Set[Address] = Set()
-
+    /*
     // For all the address that are not in the root set, check to see if the ref count is 0 before adding to the 'addressesToRemove' list.
     for (address <- (sto.keySet -- ads)) {
       newCounter = Counter.ctr(address) - 1
@@ -138,10 +134,10 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
         
         addressesToRemove += address
       }
-    }
+    } */
 
     // Remove all the elements from the Store that are not in the root set and that are not referenced anywhere.
-    Store(sto -- addressesToRemove)
+    Store(sto -- (sto.keySet -- ads))
   }
 
 }
