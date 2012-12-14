@@ -79,7 +79,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     sto get a match {
       case Some(v) ⇒ v
       case None ⇒ {
-        sys.error(a + " is inconceivable")
+        sys.error(a + " is inconceivable. Value = ")
       }
     }
 
@@ -119,25 +119,17 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     returnstr
   }
 
-  def gc(ads: LinkedHashSet[Address]): Store = {
+  def gc(rootset: LinkedHashSet[Address]): Store = {
     // decrement the ref count
     var newStore: Store = this
     var newCounter = 0
-    var addressesToRemove: Set[Address] = Set()
-    /*
-    // For all the address that are not in the root set, check to see if the ref count is 0 before adding to the 'addressesToRemove' list.
-    for (address <- (sto.keySet -- ads)) {
-      newCounter = Counter.ctr(address) - 1
-      Counter.ctr += (address -> newCounter)
-      if (newCounter == 0) {
-        println("removing address " + address + " with value " + sto(address))
-        
-        addressesToRemove += address
-      }
-    } */
-
-    // Remove all the elements from the Store that are not in the root set and that are not referenced anywhere.
-    Store(sto -- (sto.keySet -- ads))
+    var unreachableAddresses: Set[Address] = (sto.keySet -- rootset)
+    // Remove the unreachable address from the counter map
+    for (address <- unreachableAddresses) {
+      Counter.ctr -= address
+    }
+    // Remove all the elements from the Store that are not in the root set.
+    Store(sto -- unreachableAddresses)
   }
 
 }
