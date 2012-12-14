@@ -1,7 +1,7 @@
-decl x, y, foo in
-  
-foo := () => {};
-x := foo();
-y := foo();
-x;
-y
+decl foo in
+
+ foo  := () => { foo()};
+
+ foo()
+
+ 

@@ -57,7 +57,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
   // widening operator
   def ▽(σ: Store): Store = {
-    println("sto.keys " + sto.keys)
+    /*println("sto.keys " + sto.keys)
     println("σ.sto.keys " + σ.sto.keys)
     println("Map 1")
     for (key <- sto.keys) {
@@ -67,7 +67,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     for (key <- σ.sto.keys) {
       println(key + " : " + σ.sto.get(key))
     }
-
+	*/
     //assert(sto.keys == σ.sto.keys)
     val sto1 = sto.keys.foldLeft(Map[Address, AbstractValue]())(
       (acc, a) ⇒ acc + (a → (sto(a) ▽ σ.sto(a))))
@@ -78,7 +78,9 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
   def apply(a: Address): AbstractValue =
     sto get a match {
       case Some(v) ⇒ v
-      case None ⇒ null
+      case None ⇒ {
+        sys.error(a + " is inconceivable")
+      }
     }
 
   // add a value to the store at the given address
@@ -86,8 +88,18 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     if (Counter.ctr.contains(av._1)) {
       if (Counter.ctr(av._1) > 1) {
         // do weak update
-        var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
-        println("AbstractValue " + av._2)
+        var combinedValue: AbstractValue = null
+        // Sometimes it goes to the else part. Need to check what exactly causes this.
+        if (sto.contains(av._1)){
+          combinedValue = sto(av._1) ⊔ av._2
+        }
+        else{
+          // println("Value in Store " + av._1 + " : " + av._2)
+          combinedValue = av._2        	
+        }
+        
+        var tuple: (Address, AbstractValue) = (av._1, combinedValue)
+        // println("AbstractValue " + av._2)
         Store(sto + tuple)
       } else {
         // do strong update
@@ -110,10 +122,26 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     }
     returnstr
   }
-  
-  
-  def gc(ads: LinkedHashSet[Address]): Store = {	
-     Store(sto -- (sto.keySet -- ads))
+
+  def gc(ads: LinkedHashSet[Address]): Store = {
+    // decrement the ref count
+    var newStore: Store = this
+    var newCounter = 0
+    var addressesToRemove: Set[Address] = Set()
+
+    // For all the address that are not in the root set, check to see if the ref count is 0 before adding to the 'addressesToRemove' list.
+    for (address <- (sto.keySet -- ads)) {
+      newCounter = Counter.ctr(address) - 1
+      Counter.ctr += (address -> newCounter)
+      if (newCounter == 0) {
+        println("removing address " + address + " with value " + sto(address))
+        
+        addressesToRemove += address
+      }
+    }
+
+    // Remove all the elements from the Store that are not in the root set and that are not referenced anywhere.
+    Store(sto -- addressesToRemove)
   }
 
 }
