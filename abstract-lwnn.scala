@@ -264,13 +264,13 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             }
           }
           val retMap = (l -> newKontSet)
-          result += State(s, ρc ++ (xs zip as), σ ++ (as zip vs) + retMap, addrK(l))
+          result += State(s, ρc ++ (xs zip as), (σ upp (as zip vs)) + retMap, addrK(l))
         }
         result
 
       case Decl(xs, s) ⇒
         val as = xs map ((x: Var) ⇒ Address(x.lbl))
-        val σ1 = σ ++ (as map (_ -> Value(α(0))))
+        val σ1 = σ upp (as map (_ -> Value(α(0))))
         State(s, ρ ++ (xs zip as), σ1, κ)
 
       case _ ⇒ // only reached if empty Seq (should be impossible)
@@ -304,8 +304,8 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
         rootset ++= ρc.ρ.values
         // println("ρc.ρ.values " + rootset)
         collectRootset(rootset)
-        State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
-      //State(v, ρc, σ + (ρc(x) → v), κc)
+        // State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
+        State(v, ρc, σ + (ρc(x) → v), κc)
 
       case addrK(as) ⇒
         var result = Set[State]()

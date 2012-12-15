@@ -110,48 +110,12 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     }
 
   // add a value to the store at the given address
-  def +(av: (Address, AbstractValue)): Store = {
-    av._2 match {
-      case kSet: KontSet =>
-        println("****KonSet****")
-        for (element <- kSet.set) {
-          println("element " + element)
-        }
-      case v: Value => println("Value " + v) // do nothin for Values.
-      case _ =>
-    }
-    if (Counter.ctr.contains(av._1)) {
-      if (Counter.ctr(av._1) > 1) {
-        // do weak update
-        var combinedValue: AbstractValue = av._2
-        // Sometimes it goes to the if part. Need to check what exactly causes this.
-        if (!sto.contains(av._1)) {
-          combinedValue = sto(av._1) ⊔ combinedValue
-        }
-        var tuple: (Address, AbstractValue) = (av._1, combinedValue)
-        // println("AbstractValue " + av._2)
-        Store(sto + tuple)
-      } else {
-        // do strong update
-        var temp = Counter.ctr(av._1) + 1
-        Counter.ctr += (av._1 -> temp)
-        Store(sto + av)
-      }
-    } else {
-      // do strong update
-      Counter.ctr += (av._1 -> 0)
-      Store(sto + av)
-    }
-  }
+  def +( av:(Address,AbstractValue) ): Store =
+    Store( sto + av )
 
   // ditto for sequences of (address,value)
-  def ++(avs: List[(Address, AbstractValue)]): Store = {
-    var returnstr: Store = this
-    avs.foreach { av =>
-      returnstr = returnstr + av
-    }
-    returnstr
-  }
+  def ++( avs:List[(Address,AbstractValue)] ): Store =
+    Store( sto ++ avs )
 
   // add a value to the store at the given address during decl
   def up(av: (Address, AbstractValue)): Store = {
@@ -161,7 +125,14 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
         println("doint weak update on " + av._1)
         println(Counter.ctr)
         println(sto)
-        var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
+        
+         var combinedValue: AbstractValue = av._2
+        // Sometimes it goes to the if part. Need to check what exactly causes this.
+        if (sto.contains(av._1)){
+          combinedValue = sto(av._1) ⊔ combinedValue
+        }
+        
+        var tuple: (Address, AbstractValue) = (av._1, combinedValue)
         // println("AbstractValue " + av._2)
         println("weak update done")
         Store(sto + tuple)
@@ -195,7 +166,6 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     var unreachableAddresses: Set[Address] = (sto.keySet -- rootset)
     // Remove the unreachable address from the counter map
     for (address <- unreachableAddresses) {
-
       Counter.ctr -= address
     }
     // Remove all the elements from the Store that are not in the root set.
