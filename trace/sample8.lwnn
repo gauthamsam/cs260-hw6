@@ -1,0 +1,7 @@
+decl foo in
+
+ foo  := () => { foo()};
+
+ foo()
+
+ 

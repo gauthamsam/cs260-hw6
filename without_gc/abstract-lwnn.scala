@@ -48,7 +48,7 @@ object ALwnn {
     // output solution for each program point in order
     memo.toSeq.sortBy(_._1).map {
       case (lbl, State(_, ρ, σ, _)) ⇒
-        println("-" * 10) 
+        println("-" * 10)
         println("[" + lbl + "]")
         ρ.ρ.keys.toSeq.sortBy(_.x).map((x) ⇒ println(x.x + " : " + σ(ρ(x))))
     }
@@ -291,16 +291,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
           Set()
 
       case retK(ρc, x, κc) ⇒
-        // garbage collect on ρ
-        // root set ρc + continuations stored in ρc
-      
-      	// collect the rootset for garbage collection.
-        var rootset: LinkedHashSet[Address] = LinkedHashSet()
-        rootset ++= ρc.ρ.values
-        
-        collectRootset(rootset)
-        State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
-        //State(v, ρc, σ + (ρc(x) → v), κc)
+        State(v, ρc, σ + (ρc(x) → v), κc)
 
       case addrK(as) ⇒
         var result = Set[State]()

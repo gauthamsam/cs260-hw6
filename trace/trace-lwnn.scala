@@ -88,11 +88,6 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont, tr: Trace) {
   // widening operator
   def ▽(ς: State): State = {
     assert((t == ς.t) && (ρ == ς.ρ) && (κ == ς.κ))
-    //    println("Widening")
-    //    println("Environment 1")
-    //    println(ρ)
-    //    println("Environment 2")
-    //    println(ς.ρ)
     State(t, ρ, σ ▽ ς.σ, κ, tr)
   }
 
@@ -265,7 +260,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont, tr: Trace) {
               case _ => sys.error("inconceivable")
             }
           }
-          println("newKontSet " + newKontSet)
+          
           val retMap = (l -> newKontSet)
           // Push the call site to the Trace stack in the State
           result += State(s, ρc ++ (xs zip as), (σ upp (as zip vs)) + retMap, addrK(l), tr + s.lbl)
@@ -300,13 +295,11 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont, tr: Trace) {
           Set()
 
       case retK(ρc, x, κc) ⇒
-        //println("###########retK##########")
-
         // garbage collect on ρ
-        // root set ρc + addrk stored in ρc
+        // root set ρc + continuations stored in ρc
         var rootset: LinkedHashSet[Address] = LinkedHashSet()
         rootset ++= ρc.ρ.values
-        // println("ρc.ρ.values " + rootset)
+        
         collectRootset(rootset)
       // run gc on Store, and pop the call site from Trace
         State(v, ρc, σ + (ρc(x) → v) gc rootset, κc, tr -)

@@ -58,19 +58,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
   }
 
   // widening operator
-  def ▽(σ: Store): Store = {
-    //    println("sto.keys " + sto.keys)
-    //    println("σ.sto.keys " + σ.sto.keys)
-    //    println("Map 1")
-    //    for (key <- sto.keys) {
-    //      println(key + " : " + sto.get(key))
-    //    }
-    //    println("Map 2")
-    //    for (key <- σ.sto.keys) {
-    //      println(key + " : " + σ.sto.get(key))
-    //    }
-
-    // assert(sto.keys == σ.sto.keys)
+  def ▽(σ: Store): Store = {    
     val sto1 = sto.keys.foldLeft(Map[Address, AbstractValue]())(
       (acc, a) ⇒ {
         if (!sto.contains(a)) {
@@ -111,7 +99,6 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
       if (Counter.ctr(av._1) > 1) {
         // do weak update
         var combinedValue: AbstractValue = av._2
-        // Sometimes it goes to the if part. Need to check what exactly causes this.
         if (sto.contains(av._1)) {
           combinedValue = sto(av._1) ⊔ combinedValue
         }

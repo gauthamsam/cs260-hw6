@@ -1,0 +1,15 @@
+CS 260 - Assignment 6
+
+Team:
+1. Saipriya Kumar
+2. Gautham Narayanasamy
+
+
+Implemented 1,2 and 3 in main files, abstract-domains.scala,abstract-lwnn.scala.
+
+For testing without Garbage collection, files in "without_gc" folder can be used.
+
+Extra credit : Files : trace-domains.scala and trace-lwnn.scala
+Implemented kcfa with default k=1. different values of k can be passed through command line arguments. 
+Eg for 3-cfa: 
+scala ALwnn sample8.lwnn --const 3  
