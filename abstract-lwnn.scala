@@ -263,6 +263,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
               case _ => sys.error("inconceivable")
             }
           }
+          println("newKontSet " + newKontSet)
           val retMap = (l -> newKontSet)
           result += State(s, ρc ++ (xs zip as), (σ upp (as zip vs)) + retMap, addrK(l))
         }
@@ -304,8 +305,8 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
         rootset ++= ρc.ρ.values
         // println("ρc.ρ.values " + rootset)
         collectRootset(rootset)
-        // State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
-        State(v, ρc, σ + (ρc(x) → v), κc)
+        State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
+        //State(v, ρc, σ + (ρc(x) → v), κc)
 
       case addrK(as) ⇒
         var result = Set[State]()
@@ -338,9 +339,9 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
           kSet.set.foreach { knt =>
             println("****Class*** " + knt.getClass().getName())
             knt match {
-              case ad: retK => {
-                prevRootset ++= ad.ρ.ρ.values
-                println("adding retK to rootset " + ad.ρ.ρ.values)
+              case retK(ρr, x, κ) => {
+                prevRootset ++= ρr.ρ.values
+                println("adding retK to rootset " + ρr.ρ.values)
               }
               case _ =>
               // do nothin for other Konts.
