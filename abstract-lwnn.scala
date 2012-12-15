@@ -84,11 +84,11 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
   // widening operator
   def ▽(ς: State): State = {
     assert((t == ς.t) && (ρ == ς.ρ) && (κ == ς.κ))
-//    println("Widening")
-//    println("Environment 1")
-//    println(ρ)
-//    println("Environment 2")
-//    println(ς.ρ)
+    //    println("Widening")
+    //    println("Environment 1")
+    //    println(ρ)
+    //    println("Environment 2")
+    //    println(ς.ρ)
     State(t, ρ, σ ▽ ς.σ, κ)
   }
 
@@ -207,7 +207,9 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
   def next: Set[State] = t match {
     case StmtT(stmt) ⇒ stmt match {
       case e: Exp ⇒
-        State(eval(e), ρ, σ, κ)
+        val v = eval(e)
+        if (v.notEmpty) State(eval(e), ρ, σ, κ)
+        else Set()
 
       case Seq(s :: rest) ⇒
         State(s, ρ, σ, seqK(rest, κ))
@@ -236,9 +238,15 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
 
       case Assign(x: Var, e: Exp) ⇒
         val v = eval(e)
-        State(v, ρ, σ + (ρ(x) → v), κ)
+        if(v.notEmpty){
+        	State(v, ρ, σ + (ρ(x) → v), κ)
+        }
+        else{
+          Set()
+        }
+      	
 
-      case Call(x, ef, es) ⇒        
+      case Call(x, ef, es) ⇒
         var result = Set[State]()
         var closureSet: LinkedHashSet[Closure] = eval(ef).closureSet
 
@@ -256,7 +264,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
             }
           }
           val retMap = (l -> newKontSet)
-          result += State(s, ρc ++ (xs zip as), σ ++ (as zip vs) + retMap, addrK(l))          
+          result += State(s, ρc ++ (xs zip as), σ ++ (as zip vs) + retMap, addrK(l))
         }
         result
 
@@ -288,31 +296,16 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
           Set()
 
       case retK(ρc, x, κc) ⇒
-      	//println("###########retK##########")
-      	
+        //println("###########retK##########")
+
         // garbage collect on ρ
         // root set ρc + addrk stored in ρc
         var rootset: LinkedHashSet[Address] = LinkedHashSet()
         rootset ++= ρc.ρ.values
         // println("ρc.ρ.values " + rootset)
-      
-        rootset.foreach { a =>
-          // println(" σ(a) " + σ(a))
-          σ(a) match {
-            case set: KontSet => set.set.foreach { knt =>
-              knt match {
-                case ad: addrK => {
-                  rootset += ad.a
-                  // println("adding addrK to rootset " + ad.a)
-                  }
-                case _ => // do nothin for other Konts.
-              }
-            }
-            case _ => // do nothin for Values.
-          }
-        }
-      	State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
-        //State(v, ρc, σ + (ρc(x) → v), κc)
+        collectRootset(rootset)
+        State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
+      //State(v, ρc, σ + (ρc(x) → v), κc)
 
       case addrK(as) ⇒
         var result = Set[State]()
@@ -333,6 +326,36 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
     }
   }
 
+  def collectRootset(rootset: LinkedHashSet[Address]) {
+    if (rootset.size == 0) {
+      return
+    }
+    var prevRootset = LinkedHashSet[Address]()
+    rootset.foreach { a =>
+      σ(a) match {
+        case kSet: KontSet =>
+          println("****KonSet****")
+          kSet.set.foreach { knt =>
+            println("****Class*** " + knt.getClass().getName())
+            knt match {
+              case ad: retK => {
+                prevRootset ++= ad.ρ.ρ.values
+                println("adding retK to rootset " + ad.ρ.ρ.values)
+              }
+              case _ =>
+              // do nothin for other Konts.
+            }
+          }
+
+        case _ => // do nothin for Values.
+      }
+
+    }
+    // After processing the current rootset, recurse to get the addresses of the previous environment.
+    collectRootset(prevRootset)
+    // Add the previous environment's rootset to the current environment
+    rootset ++= prevRootset
+  }
   // implicit conversions
   implicit def stmt2term(s: Stmt): Term = StmtT(s)
   implicit def val2term(v: Value): Term = ValueT(v)

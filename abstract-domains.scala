@@ -57,7 +57,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
   // widening operator
   def ▽(σ: Store): Store = {
-    /*println("sto.keys " + sto.keys)
+    println("sto.keys " + sto.keys)
     println("σ.sto.keys " + σ.sto.keys)
     println("Map 1")
     for (key <- sto.keys) {
@@ -67,11 +67,37 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     for (key <- σ.sto.keys) {
       println(key + " : " + σ.sto.get(key))
     }
-	*/
+	
     //assert(sto.keys == σ.sto.keys)
     val sto1 = sto.keys.foldLeft(Map[Address, AbstractValue]())(
-      (acc, a) ⇒ acc + (a → (sto(a) ▽ σ.sto(a))))
-    Store(sto1)
+      (acc, a) ⇒ {
+        if (!sto.contains(a)){
+          acc + (a → (σ.sto(a)))
+        }
+        else if(!σ.sto.contains(a)){
+          acc + (a → (sto(a)))
+        }
+        else{
+          acc + (a → (sto(a) ▽ σ.sto(a)))
+        }
+      }
+    )
+    
+    val sto2 = σ.sto.keys.foldLeft(Map[Address, AbstractValue]())(
+      (acc, a) ⇒ {
+        if (!sto.contains(a)){
+          acc + (a → (σ.sto(a)))
+        }
+        else if(!σ.sto.contains(a)){
+          acc + (a → (sto(a)))
+        }
+        else{
+          acc + (a → (sto(a) ▽ σ.sto(a)))
+        }
+      }
+    )
+
+    Store(sto1 ++ sto2)
   }
 
   // retrieve an address' value
@@ -85,10 +111,24 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
   // add a value to the store at the given address
   def +(av: (Address, AbstractValue)): Store = {
+    av._2 match {
+      case kSet: KontSet =>
+        println("****KonSet****")
+        for (element <- kSet.set) {
+          println("element " + element)
+        }
+      case v: Value => println("Value " + v) // do nothin for Values.
+      case _ =>
+    }
     if (Counter.ctr.contains(av._1)) {
       if (Counter.ctr(av._1) > 1) {
         // do weak update
-        var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
+        var combinedValue: AbstractValue = av._2
+        // Sometimes it goes to the if part. Need to check what exactly causes this.
+        if (!sto.contains(av._1)) {
+          combinedValue = sto(av._1) ⊔ combinedValue
+        }
+        var tuple: (Address, AbstractValue) = (av._1, combinedValue)
         // println("AbstractValue " + av._2)
         Store(sto + tuple)
       } else {
@@ -113,11 +153,49 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     returnstr
   }
 
+  // add a value to the store at the given address during decl
+  def up(av: (Address, AbstractValue)): Store = {
+    if (Counter.ctr.contains(av._1)) {
+      if (Counter.ctr(av._1) > 0) {
+        // do weak update
+        println("doint weak update on " + av._1)
+        println(Counter.ctr)
+        println(sto)
+        var tuple: (Address, AbstractValue) = (av._1, sto(av._1) ⊔ av._2)
+        // println("AbstractValue " + av._2)
+        println("weak update done")
+        Store(sto + tuple)
+      } else {
+        // do strong update
+        println("doint strong update again on " + av._1)
+        println(Counter.ctr)
+        var temp = Counter.ctr(av._1) + 1
+        Counter.ctr += (av._1 -> temp)
+        Store(sto + av)
+      }
+    } else {
+      // do strong update
+      println("doint strong update on " + av._1)
+      println(Counter.ctr) 
+      Counter.ctr += (av._1 -> 1)
+      println("not present, so added" + (sto + av))
+      Store(sto + av)
+    }
+  }
+
+  // ditto for sequences of (address,value) during decl
+  def upp(avs: List[(Address, AbstractValue)]): Store = {
+    var returnstr: Store = this
+    avs.foreach { av =>
+      returnstr = returnstr up av
+    }
+    returnstr
+  }
   def gc(rootset: LinkedHashSet[Address]): Store = {
-    // decrement the ref count
     var unreachableAddresses: Set[Address] = (sto.keySet -- rootset)
     // Remove the unreachable address from the counter map
     for (address <- unreachableAddresses) {
+
       Counter.ctr -= address
     }
     // Remove all the elements from the Store that are not in the root set.
@@ -128,20 +206,6 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
 // abstract addresses (Label, which is an integer)
 case class Address(lbl: Int)
-
-// companion object for factory method
-object Address {
-
-  // helpers for generating fresh addresses
-  private var aid = 0
-  private def fresh(): Int =
-    { aid += 1; aid }
-
-  // generate fresh Address
-  def apply(): Address =
-    new Address(fresh())
-
-}
 
 sealed abstract class AbstractValue {
   // lattice join
@@ -338,7 +402,7 @@ case class Value(intAbs: Z, closureSet: LinkedHashSet[Closure] = LinkedHashSet()
   }
 
   def notEmpty: Boolean = {
-    intAbs.notEmpty
+    intAbs.notEmpty || closureSet.size > 0
   }
 
   override def toString = {

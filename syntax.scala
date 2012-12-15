@@ -7,7 +7,7 @@ import scala.io._
 
 sealed abstract class AST {
   val lbl = AST.id() // node label
-}
+} 
 
 object AST {
   // create unique node labels
