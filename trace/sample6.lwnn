@@ -5,5 +5,5 @@ fact := (n) => {
     if (n <= 0) 1
     else { r := fact(n - 1); r * n}
 };
-x := fact(16);
+x := fact(3);
 x

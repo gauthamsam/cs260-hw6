@@ -42,6 +42,7 @@ case class Env(ρ: Map[Var, Address] = Map()) {
 
 package object Counter {
   var ctr: Map[Address, Int] = Map();
+  var k:Int = 1
 }
 
 // store 
@@ -571,25 +572,33 @@ case class retK(ρ: Env, x: Var, κ: Kont) extends Kont {
 }
 
 sealed abstract class Trace {
-  def +(n: Int): Trace
-  def -(): Trace
+  def +(n: Int): Trace  // push call site to stack
+  def -(): Trace // pop call site from stack
 
 }
 
+// kcfa stack based control flow analysis.
 case class kcfa(stk: Stack[Int] = new Stack()) extends Trace {
 
+  // k-limited : k is taken from the global object Counter.k
   def apply(lbl: Int): kcfa = {
-    kcfa(stk :+ lbl)
+    if(stk.size < Counter.k) {
+      kcfa(stk :+ lbl)
+    }
+    this
   }
   def +(lbl: Int): kcfa = {
-    kcfa(stk :+ lbl)
+    if(stk.size < Counter.k) {
+      kcfa(stk :+ lbl)
+    }
+    this
   }
 
   def -(): kcfa = {
     if (!stk.isEmpty) {
       stk.pop
     }
-    kcfa(stk)
+    this
   }
 
 }

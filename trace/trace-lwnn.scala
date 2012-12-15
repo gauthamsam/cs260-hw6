@@ -22,34 +22,38 @@ object ALwnn {
       case "--const" ⇒ α = Z.α _
       case _ ⇒ sys.error("undefined")
     }
+    
+    if (args.length > 2) {
+      Counter.k = args(2).toInt
+    }
 
-// worklist with initial state
+    // worklist with initial state
     var work = Set(State(StmtT(ast), Env(), Store(), haltK, kcfa()))
 
     // remember set (organized by Label, Trace, Env)
-    val memo = HMap[(Int,Trace,Env), State]()
+    val memo = HMap[(Int, Trace, Env), State]()
 
     // calculate fixpoint
     while (!work.isEmpty) {
       work = work.flatMap(_.next).flatMap(
         (ς) ⇒ if (!ς.memo) // this isn't a program point (p.p.)
           Some(ς)
-        else if (!(memo contains (ς.lbl,ς.tr,ς.ρ))) { // first time at this trace point
-          memo((ς.lbl,ς.tr,ς.ρ))= ς
+        else if (!(memo contains (ς.lbl, ς.tr, ς.ρ))) { // first time at this trace point
+          memo((ς.lbl, ς.tr, ς.ρ)) = ς
           Some(ς)
-        } else if (memo((ς.lbl,ς.tr,ς.ρ)) == memo((ς.lbl,ς.tr,ς.ρ)) ▽ ς) // nothing new
+        } else if (memo((ς.lbl, ς.tr, ς.ρ)) == memo((ς.lbl, ς.tr, ς.ρ)) ▽ ς) // nothing new
           None
         else { // new information
-          memo((ς.lbl,ς.tr,ς.ρ)) = memo((ς.lbl,ς.tr,ς.ρ)) ▽ ς
-          Some(memo((ς.lbl,ς.tr,ς.ρ)))
+          memo((ς.lbl, ς.tr, ς.ρ)) = memo((ς.lbl, ς.tr, ς.ρ)) ▽ ς
+          Some(memo((ς.lbl, ς.tr, ς.ρ)))
         })
     }
 
     // output solution for each trace in order
     memo.toSeq.sortBy(_._1._1).map {
-      case ((lbl,trace,env), State(_, ρ, σ, _,_)) ⇒
+      case ((lbl, trace, env), State(_, ρ, σ, _, _)) ⇒
         println("-" * 10)
-        println("[" + (lbl,trace,env) + "]")
+        println("[" + (lbl, trace, env) + "]")
         ρ.ρ.keys.toSeq.sortBy(_.x).map((x) ⇒ println(x.x + " : " + σ(ρ(x))))
     }
   }
@@ -232,19 +236,17 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont, tr: Trace) {
         else if (guard.definitelyFalse)
           State(guard, ρ, σ, κ, tr)
         else if (guard.notEmpty)
-          Set(State(s, ρ, σ, whileK(e, s, κ),tr), State(guard, ρ, σ, κ, tr))
+          Set(State(s, ρ, σ, whileK(e, s, κ), tr), State(guard, ρ, σ, κ, tr))
         else
           Set()
 
       case Assign(x: Var, e: Exp) ⇒
         val v = eval(e)
-        if(v.notEmpty){
-        	State(v, ρ, σ + (ρ(x) → v), κ, tr)
-        }
-        else{
+        if (v.notEmpty) {
+          State(v, ρ, σ + (ρ(x) → v), κ, tr)
+        } else {
           Set()
         }
-      	
 
       case Call(x, ef, es) ⇒
         var result = Set[State]()
@@ -265,6 +267,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont, tr: Trace) {
           }
           println("newKontSet " + newKontSet)
           val retMap = (l -> newKontSet)
+          // Push the call site to the Trace stack in the State
           result += State(s, ρc ++ (xs zip as), (σ upp (as zip vs)) + retMap, addrK(l), tr + s.lbl)
         }
         result
@@ -305,8 +308,9 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont, tr: Trace) {
         rootset ++= ρc.ρ.values
         // println("ρc.ρ.values " + rootset)
         collectRootset(rootset)
+      // run gc on Store, and pop the call site from Trace
         State(v, ρc, σ + (ρc(x) → v) gc rootset, κc, tr -)
-        //State(v, ρc, σ + (ρc(x) → v), κc)
+      //State(v, ρc, σ + (ρc(x) → v), κc)
 
       case addrK(as) ⇒
         var result = Set[State]()
@@ -335,14 +339,12 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont, tr: Trace) {
     rootset.foreach { a =>
       σ(a) match {
         case kSet: KontSet =>
-          println("****KonSet****")
           kSet.set.foreach { knt =>
-            println("****Class*** " + knt.getClass().getName())
             knt match {
               case retK(ρr, x, κ) => {
                 prevRootset ++= ρr.ρ.values
-                println("adding retK to rootset " + ρr.ρ.values)
               }
+              case ad:addrK => prevRootset += ad.a
               case _ =>
               // do nothin for other Konts.
             }

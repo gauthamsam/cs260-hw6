@@ -84,11 +84,6 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
   // widening operator
   def ▽(ς: State): State = {
     assert((t == ς.t) && (ρ == ς.ρ) && (κ == ς.κ))
-    //    println("Widening")
-    //    println("Environment 1")
-    //    println(ρ)
-    //    println("Environment 2")
-    //    println(ς.ρ)
     State(t, ρ, σ ▽ ς.σ, κ)
   }
 
@@ -262,8 +257,7 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
               case KontSet(set) => newKontSet.set ++= set
               case _ => sys.error("inconceivable")
             }
-          }
-          println("newKontSet " + newKontSet)
+          }          
           val retMap = (l -> newKontSet)
           result += State(s, ρc ++ (xs zip as), (σ upp (as zip vs)) + retMap, addrK(l))
         }
@@ -297,15 +291,14 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
           Set()
 
       case retK(ρc, x, κc) ⇒
-        //println("###########retK##########")
-
         // garbage collect on ρ
-        // root set ρc + addrk stored in ρc
+        // root set ρc + continuations stored in ρc
+      
+      	// collect the rootset for garbage collection.
         var rootset: LinkedHashSet[Address] = LinkedHashSet()
         rootset ++= ρc.ρ.values
-        println("rootset before " + rootset)
+        
         collectRootset(rootset)
-        println("rootset after " + rootset)
         State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
         //State(v, ρc, σ + (ρc(x) → v), κc)
 
@@ -338,17 +331,14 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
     
     var prevRootset = LinkedHashSet[Address]()
     rootset.foreach { a =>
-      println ("******σ(a)****** " + σ(a))
       σ(a) match {
         case kSet: KontSet =>
-          println("****KonSet****")
-          kSet.set.foreach { knt =>
-            println("****Class*** " + knt.getClass().getName())
+          kSet.set.foreach { knt =>            
             knt match {
               case retK(ρr, x, κ) => {
-                prevRootset ++= ρr.ρ.values
-                println("adding retK to rootset " + ρr.ρ.values)
+                prevRootset ++= ρr.ρ.values                
               }
+              case ad:addrK => prevRootset += ad.a
               case _ =>
               // do nothin for other Konts.
             }
