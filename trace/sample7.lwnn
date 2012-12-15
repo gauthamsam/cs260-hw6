@@ -1,0 +1,17 @@
+decl foo,x,y in
+
+foo := (z) => { decl a in
+
+a:=2;
+
+a*z
+
+};
+
+x := foo(2);
+
+y := foo(2);
+
+x;
+
+y

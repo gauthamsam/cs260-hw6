@@ -1,0 +1,6 @@
+decl foo, a, b in
+foo := () => { decl x in x := 12; x};
+a := foo();
+b := foo();
+a;
+b

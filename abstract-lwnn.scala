@@ -303,8 +303,9 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
         // root set ρc + addrk stored in ρc
         var rootset: LinkedHashSet[Address] = LinkedHashSet()
         rootset ++= ρc.ρ.values
-        // println("ρc.ρ.values " + rootset)
+        println("rootset before " + rootset)
         collectRootset(rootset)
+        println("rootset after " + rootset)
         State(v, ρc, σ + (ρc(x) → v) gc rootset, κc)
         //State(v, ρc, σ + (ρc(x) → v), κc)
 
@@ -327,12 +328,17 @@ case class State(t: Term, ρ: Env, σ: Store, κ: Kont) {
     }
   }
 
+  /**
+   * Recursively collect the rootset for GC
+   */
   def collectRootset(rootset: LinkedHashSet[Address]) {
     if (rootset.size == 0) {
       return
     }
+    
     var prevRootset = LinkedHashSet[Address]()
     rootset.foreach { a =>
+      println ("******σ(a)****** " + σ(a))
       σ(a) match {
         case kSet: KontSet =>
           println("****KonSet****")

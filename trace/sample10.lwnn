@@ -1,0 +1,10 @@
+decl p, foo in 
+
+foo := () => {
+ decl x,y in 
+ if ([0..1]) { foo() };
+ y := x;
+ x := 4
+};
+p := foo();
+p

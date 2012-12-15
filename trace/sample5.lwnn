@@ -1,0 +1,11 @@
+decl x, foo in
+  
+if ([0..1]){
+  foo := (z) => {z + 1}
+}
+else{
+  foo := (z) => {z + 1} 
+};
+
+x := foo(2);
+x

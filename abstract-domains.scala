@@ -57,24 +57,35 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
 
   // widening operator
   def ▽(σ: Store): Store = {
-//    println("sto.keys " + sto.keys)
-//    println("σ.sto.keys " + σ.sto.keys)
-//    println("Map 1")
-//    for (key <- sto.keys) {
-//      println(key + " : " + sto.get(key))
-//    }
-//    println("Map 2")
-//    for (key <- σ.sto.keys) {
-//      println(key + " : " + σ.sto.get(key))
-//    }
-
-    // assert(sto.keys == σ.sto.keys)
-    val sto1 = sto.keys.foldLeft(Map[Address, AbstractValue]())(
+     val sto1 = sto.keys.foldLeft(Map[Address, AbstractValue]())(
       (acc, a) ⇒ {
-        acc + (a → (sto(a) ▽ σ.sto(a)))
-      })
+        if (!sto.contains(a)){
+          acc + (a → (σ.sto(a)))
+        }
+        else if(!σ.sto.contains(a)){
+          acc + (a → (sto(a)))
+        }
+        else{
+          acc + (a → (sto(a) ▽ σ.sto(a)))
+        }
+      }
+    )
+    
+    val sto2 = σ.sto.keys.foldLeft(Map[Address, AbstractValue]())(
+      (acc, a) ⇒ {
+        if (!sto.contains(a)){
+          acc + (a → (σ.sto(a)))
+        }
+        else if(!σ.sto.contains(a)){
+          acc + (a → (sto(a)))
+        }
+        else{
+          acc + (a → (sto(a) ▽ σ.sto(a)))
+        }
+      }
+    )
 
-    Store(sto1)
+    Store(sto1 ++ sto2)
   }
 
   // retrieve an address' value
@@ -92,7 +103,6 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
       if (Counter.ctr(av._1) > 1) {
         // do weak update
          var combinedValue: AbstractValue = av._2
-        // Sometimes it goes to the if part. Need to check what exactly causes this.
         if (sto.contains(av._1)){
           combinedValue = sto(av._1) ⊔ combinedValue
         }
@@ -160,8 +170,7 @@ case class Store(sto: Map[Address, AbstractValue] = Map()) {
     for (address <- unreachableAddresses) {
       Counter.ctr += (address -> 0)
     }
-    // Remove all the elements from the Store that are not in the root set.
-    Store(sto)
+    this
   }
 
 }

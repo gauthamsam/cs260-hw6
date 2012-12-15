@@ -1,0 +1,7 @@
+decl x, y, foo in
+  
+foo := (z) => {z};
+x := foo(1);
+y := foo(2);
+x;
+y
